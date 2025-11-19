@@ -1,15 +1,33 @@
 import tkinter as tk
+from tkinter import ttk
 from PIL import Image, ImageTk
 from utils import scaleImage, COLOR_PALETTE, read_albums
-
+import requests
+from io import BytesIO
 from fonts import get_fonts
 
 from Album import Album
+
+from service import spotifyapi
+
+
 
 
 class MainApp(tk.Frame):
     def __init__(self, master=None):
         super().__init__(master)
+        
+        self.artists = {
+            "Kanye West" : "5K4W6rqBFWDnAN6FQUkS6x",
+            "Jacek Kaczmarski" : "53p5kiC47oEvG9E4VKDNl2",
+            "Metallica": "2ye2Wgw4gimLv2eAKyk1NB",
+            "Taco": "7CJgLPEqiIRuneZSolpawQ"
+        }
+        
+        
+        
+        self.artist_id = "7G3hAQixY7DIAGTgA2GU99"
+        
         
         img = [Image.open("../assets/img/obraz.png"), Image.open("../assets/img/obraz2.png"), Image.open("../assets/img/obraz3.png")]
         
@@ -39,7 +57,8 @@ class MainApp(tk.Frame):
         dataLayout = tk.Frame(middleBlockLayout, bg=self.master["bg"])
         dataLayout.pack(side="top", expand=False)
         
-        tk.Label(dataLayout, image=self.images["vinyl"], bg=self.master["bg"]).pack(side="left", padx=10)
+        self.image = tk.Label(dataLayout, image=self.images["vinyl"], bg=self.master["bg"])
+        self.image.pack(side="left", padx=10)
         
         detailsLayout = tk.Frame(dataLayout, bg=self.master["bg"])
         detailsLayout.pack(side="left", expand=False)
@@ -68,6 +87,17 @@ class MainApp(tk.Frame):
         self.downloadButton = tk.Button(downloadLayout, text="Pobierz", bg=COLOR_PALETTE.ACCENT_1, font=BOLD_20, command=lambda: self.update_download())
         self.downloadButton.pack(side="right", padx=10)
         
+        self.downloadButton = tk.Button(downloadLayout, text="Spotify", bg=COLOR_PALETTE.ACCENT_1, font=BOLD_20, command=lambda: self.switch_to_spotify())
+        self.downloadButton.pack(side="right", padx=10)
+        
+        
+        self.multipleValue = tk.StringVar()
+        self.multiple = ttk.Combobox(downloadLayout, textvariable=self.multipleValue)
+        self.multiple.pack(side="right", padx=10)
+        
+        
+        self.multiple["values"] = [x for x in self.artists]
+        
         self.currAlbumIndex = 0
         self.albums = read_albums("../data/Data.txt")
         
@@ -90,7 +120,6 @@ class MainApp(tk.Frame):
 
         
     def switch_labels_text(self) -> None:
-        
         album = self.albums[self.currAlbumIndex]
         
         self.artistLabel.config(text=album.artist)
@@ -98,3 +127,26 @@ class MainApp(tk.Frame):
         self.tracksCountLabel.config(text=f"{album.songsNumber} utworów")
         self.albumYearLabel.config(text=album.year)
         self.downloadsLabel.config(text=album.downloadNumber)
+    
+        if album.imageUrl:
+            response = requests.get(album.imageUrl)
+            img_data = BytesIO(response.content)
+            img = Image.open(img_data)
+            img = img.resize((200, 200))
+            
+            photo = ImageTk.PhotoImage(img)
+            
+            self.current_photo = photo
+            self.image.config(image=self.current_photo)
+            
+            
+            
+            
+        
+    def switch_to_spotify(self):
+        self.albums = spotifyapi.get_albums_for_artist(self.artists[self.multipleValue.get()])
+        self.currAlbumIndex = 0
+        
+        self.switch_labels_text()
+        
+    
